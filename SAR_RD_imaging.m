@@ -42,9 +42,9 @@ edge_targets = [Xc-Xo, Yc-Yo;
 
 %% 字母点目标生成 (严格按照笛卡尔坐标系 Y向上为正)
 spacing = 2.0;      %相邻点间距2m
-letter_h = 80;      %字母高度
-letter_w = 50;      %字母宽度
-gap = 40;           %字母间距
+letter_h = 280;     %字母高度(纵轴500m的约2/3)
+letter_w = 160;     %字母宽度
+gap = 50;           %字母间距
 
 total_w = 3*letter_w + 2*gap;
 x_start = Xc - total_w/2;    %距离向整体居中
@@ -117,13 +117,12 @@ fprintf('总点目标数: %d\n', Ntarget);
 figure;
 plot(target(:,1), target(:,2), 'r.', 'MarkerSize', 8);
 hold on;
-plot(edge_targets(:,1), edge_targets(:,2), 'bs', 'MarkerSize', 12, 'LineWidth', 2);
+plot(edge_targets(:,1), edge_targets(:,2), 'r.', 'MarkerSize', 8);
 xlabel('距离向 X /m');
 ylabel('方位向 Y /m');
 title('点目标初始分布(字母LWB + 边缘点)');
 axis equal;
 grid on;
-legend('字母点目标', '边缘点');
 
 %% 观测几何计算
 Rmin = sqrt(H^2 + (Xc-Xo)^2);   %最近斜距
@@ -256,10 +255,7 @@ ylabel('方位向 /m');
 title('RD成像结果(dB)');
 caxis([-40 0]);
 
-% 【幅宽框定限制：横轴1000m，纵轴500m，留余量显示】
-xlim([Xc-600, Xc+600]);
-ylim([-350, 350]);
-
+% 不限制显示范围，自动适应数据
 colorbar;
 colormap('jet');
 
