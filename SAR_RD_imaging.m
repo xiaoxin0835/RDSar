@@ -28,12 +28,11 @@ im = sqrt(-1);              %虚数单位
 %% 场景设置
 Xc = sqrt(R_etac^2 - H^2); %场景中心地距坐标(距离向)
 Yc = 0;                     %场景中心方位向坐标
-Xo = 300;                   %距离向半幅宽(地距)
-Yo = 300;                   %方位向半幅宽
+Xo = 250;                   %距离向半幅宽缩小为250 (总宽500m)
+Yo = 250;                   %方位向半幅宽缩小为250 (总宽500m)
 
 %% 点目标生成 - 字母LWB + 边缘点
-%%注意：imagesc中 X为水平轴(距离向)，Y为垂直轴(方位向)
-%%因此字母宽度->X(距离向)，字母高度->Y(方位向)
+%%注意：plot中Y轴正方向朝上，y0为物理底部，y0+letter_h为物理顶部
 
 % 边缘4个点(强制要求)
 edge_targets = [Xc-Xo, Yc-Yo;
@@ -41,104 +40,73 @@ edge_targets = [Xc-Xo, Yc-Yo;
                 Xc+Xo, Yc-Yo;
                 Xc+Xo, Yc+Yo];
 
-% 字母参数设置
-spacing = 2.0;      %相邻点间距2m(大于分辨率)
-letter_h = 80;      %字母高度(映射到Y方位向)
-letter_w = 50;      %字母宽度(映射到X距离向)
-gap = 40;           %字母间距(沿X距离向)
+%% 字母点目标生成 (严格按照笛卡尔坐标系 Y向上为正)
+spacing = 2.0;      %相邻点间距2m
+letter_h = 80;      %字母高度
+letter_w = 50;      %字母宽度
+gap = 40;           %字母间距
 
-%三个字母总宽度(沿距离向X排列)
 total_w = 3*letter_w + 2*gap;
-
-%字母起始位置：距离向居中，方位向居中
-x_start = Xc - total_w/2;    %距离向起始
-y_start = Yc - letter_h/2;   %方位向起始(字母高度方向)
+x_start = Xc - total_w/2;    %距离向整体居中
+y_start = Yc - letter_h/2;   %此处 y_start 即为字母的"最底端"
 
 letter_targets = [];
 
 %% 字母 L
 x0 = x_start;
 y0 = y_start;
-%竖笔画：沿Y(方位向)展开，X不变
+%竖笔画：从底端 y0 向上延伸到 y0+letter_h
 pts_y = (y0:spacing:y0+letter_h)';
-pts_x = ones(size(pts_y))*x0;
-letter_targets = [letter_targets; pts_x, pts_y];
-%横笔画(底部)：沿X(距离向)展开，Y固定在底部
+letter_targets = [letter_targets; ones(size(pts_y))*x0, pts_y];
+%横笔画(底部)：Y固定在底部 y0，X向右延伸
 pts_x2 = (x0:spacing:x0+letter_w)';
-pts_y2 = ones(size(pts_x2))*(y0+letter_h);
-letter_targets = [letter_targets; pts_x2, pts_y2];
+letter_targets = [letter_targets; pts_x2, ones(size(pts_x2))*y0];
 
 %% 字母 W
 x0 = x_start + letter_w + gap;
 y0 = y_start;
-seg_w = letter_w/4;  %W分4段(沿X方向)
+seg_w = letter_w/4;
 n_pts = round(letter_h/spacing);
-%第一笔：从左上到左下谷(Y从上到下，X向右偏移一点)
+%第一笔：从左上(y0+H)落至左下(y0)
 for k = 0:n_pts
-    t_ratio = k/n_pts;
-    py = y0 + t_ratio*letter_h;
-    px = x0 + t_ratio*seg_w;
-    letter_targets = [letter_targets; px, py];
+    t = k/n_pts;
+    letter_targets = [letter_targets; x0 + t*seg_w, y0 + letter_h - t*letter_h];
 end
-%第二笔：从左下谷到中间峰顶(Y从下到中，X继续右移)
+%第二笔：从左下(y0)升至中峰(y0+H/2)
 for k = 0:n_pts
-    t_ratio = k/n_pts;
-    py = y0 + letter_h - t_ratio*(letter_h/2);
-    px = x0 + seg_w + t_ratio*seg_w;
-    letter_targets = [letter_targets; px, py];
+    t = k/n_pts;
+    letter_targets = [letter_targets; x0 + seg_w + t*seg_w, y0 + t*(letter_h/2)];
 end
-%第三笔：从中间峰顶到右下谷(Y从中到下，X继续右移)
+%第三笔：从中峰(y0+H/2)落至右下(y0)
 for k = 0:n_pts
-    t_ratio = k/n_pts;
-    py = y0 + letter_h/2 + t_ratio*(letter_h/2);
-    px = x0 + 2*seg_w + t_ratio*seg_w;
-    letter_targets = [letter_targets; px, py];
+    t = k/n_pts;
+    letter_targets = [letter_targets; x0 + 2*seg_w + t*seg_w, y0 + letter_h/2 - t*(letter_h/2)];
 end
-%第四笔：从右下谷到右上(Y从下到上，X继续右移)
+%第四笔：从右下(y0)升至右上(y0+H)
 for k = 0:n_pts
-    t_ratio = k/n_pts;
-    py = y0 + letter_h - t_ratio*letter_h;
-    px = x0 + 3*seg_w + t_ratio*seg_w;
-    letter_targets = [letter_targets; px, py];
+    t = k/n_pts;
+    letter_targets = [letter_targets; x0 + 3*seg_w + t*seg_w, y0 + t*letter_h];
 end
 
 %% 字母 B
 x0 = x_start + 2*(letter_w + gap);
 y0 = y_start;
-%竖笔画：沿Y(方位向)展开
+%竖笔画 (左侧)
 pts_y = (y0:spacing:y0+letter_h)';
-pts_x = ones(size(pts_y))*x0;
-letter_targets = [letter_targets; pts_x, pts_y];
-%上横：沿X(距离向)展开，Y在顶部
-pts_x2 = (x0:spacing:x0+letter_w*0.7)';
-pts_y2 = ones(size(pts_x2))*y0;
-letter_targets = [letter_targets; pts_x2, pts_y2];
-%中横：沿X(距离向)展开，Y在中间
+letter_targets = [letter_targets; ones(size(pts_y))*x0, pts_y];
+%三条横线
 pts_x3 = (x0:spacing:x0+letter_w*0.7)';
-pts_y3 = ones(size(pts_x3))*(y0+letter_h/2);
-letter_targets = [letter_targets; pts_x3, pts_y3];
-%下横：沿X(距离向)展开，Y在底部
-pts_x4 = (x0:spacing:x0+letter_w*0.7)';
-pts_y4 = ones(size(pts_x4))*(y0+letter_h);
-letter_targets = [letter_targets; pts_x4, pts_y4];
-%上半圆弧(右侧凸出)
+letter_targets = [letter_targets; pts_x3, ones(size(pts_x3))*y0];               % 底部横线
+letter_targets = [letter_targets; pts_x3, ones(size(pts_x3))*(y0+letter_h/2)];  % 中部横线
+letter_targets = [letter_targets; pts_x3, ones(size(pts_x3))*(y0+letter_h)];    % 顶部横线
+%两个半圆弧
 r_arc = letter_h/4;
-x_center_up = x0 + letter_w*0.7;     %圆心X(距离向偏右)
-y_center_up = y0 + letter_h/4;       %圆心Y(上半部分中心)
-theta_arc = linspace(-pi/2, pi/2, round(pi*r_arc/spacing));
-for k = 1:length(theta_arc)
-    px = x_center_up + r_arc*cos(theta_arc(k));  %X方向凸出
-    py = y_center_up + r_arc*sin(theta_arc(k));  %Y方向展开
-    letter_targets = [letter_targets; px, py];
-end
-%下半圆弧(右侧凸出)
-x_center_dn = x0 + letter_w*0.7;
-y_center_dn = y0 + 3*letter_h/4;
-for k = 1:length(theta_arc)
-    px = x_center_dn + r_arc*cos(theta_arc(k));
-    py = y_center_dn + r_arc*sin(theta_arc(k));
-    letter_targets = [letter_targets; px, py];
-end
+x_center = x0 + letter_w*0.7;
+theta_arc = linspace(-pi/2, pi/2, round(pi*r_arc/spacing))';
+%下半圆弧
+letter_targets = [letter_targets; x_center + r_arc*cos(theta_arc), y0 + r_arc + r_arc*sin(theta_arc)];
+%上半圆弧
+letter_targets = [letter_targets; x_center + r_arc*cos(theta_arc), y0 + 3*r_arc + r_arc*sin(theta_arc)];
 
 %% 合并所有目标
 target = [edge_targets; letter_targets];
@@ -282,10 +250,16 @@ colormap('jet');
 figure;
 img_dB = 20*log10(abs(signal_processed)/max(abs(signal_processed(:)))+eps);
 imagesc(r_axis, y, img_dB);
-xlabel('距离向/m');
-ylabel('方位向/m');
+axis xy;    % 将Y轴反转回来，保证图像显示符合真实空间几何关系
+xlabel('距离向 /m');
+ylabel('方位向 /m');
 title('RD成像结果(dB)');
 caxis([-40 0]);
+
+% 【幅宽框定限制：强制显示 800m x 800m 的幅宽】
+xlim([Xc-400, Xc+400]);
+ylim([-400, 400]);
+
 colorbar;
 colormap('jet');
 
