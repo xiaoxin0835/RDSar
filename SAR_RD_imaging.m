@@ -72,15 +72,15 @@ for k = 0:n_pts
     t = k/n_pts;
     letter_targets = [letter_targets; x0 + t*seg_w, y0 + letter_h - t*letter_h];
 end
-%第二笔：从左下(y0)升至中峰(y0+H/2)
+%第二笔：从左下(y0)升至中峰(y0+H)
 for k = 0:n_pts
     t = k/n_pts;
-    letter_targets = [letter_targets; x0 + seg_w + t*seg_w, y0 + t*(letter_h/2)];
+    letter_targets = [letter_targets; x0 + seg_w + t*seg_w, y0 + t*letter_h];
 end
-%第三笔：从中峰(y0+H/2)落至右下(y0)
+%第三笔：从中峰(y0+H)落至右下(y0)
 for k = 0:n_pts
     t = k/n_pts;
-    letter_targets = [letter_targets; x0 + 2*seg_w + t*seg_w, y0 + letter_h/2 - t*(letter_h/2)];
+    letter_targets = [letter_targets; x0 + 2*seg_w + t*seg_w, y0 + letter_h - t*letter_h];
 end
 %第四笔：从右下(y0)升至右上(y0+H)
 for k = 0:n_pts
