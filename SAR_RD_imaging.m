@@ -87,29 +87,29 @@ end
 pts_y4 = (y0:spacing:y0+letter_h/2)';
 letter_targets = [letter_targets; ones(size(pts_y4))*(x0+letter_w/2), pts_y4];
 
-%% 字母 S
+%% 字母 S (左右镜像)
 x0 = x_start + 2*(letter_w + gap);
 y0 = y_start;
 %S由三条横线和两段圆弧组成
-%底部横线
-pts_x_bot = (x0:spacing:x0+letter_w*0.8)';
+%底部横线(右侧延伸)
+pts_x_bot = (x0+letter_w*0.2:spacing:x0+letter_w)';
 letter_targets = [letter_targets; pts_x_bot, ones(size(pts_x_bot))*y0];
 %中部横线
 pts_x_mid = (x0+letter_w*0.2:spacing:x0+letter_w*0.8)';
 letter_targets = [letter_targets; pts_x_mid, ones(size(pts_x_mid))*(y0+letter_h/2)];
-%顶部横线
-pts_x_top = (x0+letter_w*0.2:spacing:x0+letter_w)';
+%顶部横线(左侧延伸)
+pts_x_top = (x0:spacing:x0+letter_w*0.8)';
 letter_targets = [letter_targets; pts_x_top, ones(size(pts_x_top))*(y0+letter_h)];
-%下半圆弧(左侧凸出，连接底部和中部)
+%下半圆弧(右侧凸出，连接底部和中部)
 r_arc_s = letter_h/4;
-x_center_bot = x0 + letter_w*0.2;
+x_center_bot = x0 + letter_w*0.8;
 y_center_bot = y0 + letter_h/4;
-theta_s = linspace(pi/2, 3*pi/2, round(pi*r_arc_s/spacing))';
+theta_s = linspace(-pi/2, pi/2, round(pi*r_arc_s/spacing))';
 letter_targets = [letter_targets; x_center_bot + r_arc_s*cos(theta_s), y_center_bot + r_arc_s*sin(theta_s)];
-%上半圆弧(右侧凸出，连接中部和顶部)
-x_center_top = x0 + letter_w*0.8;
+%上半圆弧(左侧凸出，连接中部和顶部)
+x_center_top = x0 + letter_w*0.2;
 y_center_top = y0 + 3*letter_h/4;
-theta_s2 = linspace(-pi/2, pi/2, round(pi*r_arc_s/spacing))';
+theta_s2 = linspace(pi/2, 3*pi/2, round(pi*r_arc_s/spacing))';
 letter_targets = [letter_targets; x_center_top + r_arc_s*cos(theta_s2), y_center_top + r_arc_s*sin(theta_s2)];
 
 %% 合并所有目标
