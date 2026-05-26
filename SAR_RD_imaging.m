@@ -1,5 +1,5 @@
 %%机载X波段SAR回波仿真与RD成像算法
-%%字母HYS + 边缘点目标布设
+%%字母LWB + 边缘点目标布设
 %%分辨率0.5m，幅宽500m
 
 close all; clear; clc;
@@ -31,7 +31,7 @@ Yc = 0;                     %场景中心方位向坐标
 Xo = 500;                   %距离向半幅宽500，总宽1000m(横轴)
 Yo = 250;                   %方位向半幅宽250，总宽500m(纵轴)
 
-%% 点目标生成 - 字母HYS + 边缘点
+%% 点目标生成 - 字母LWB + 边缘点
 %%注意：plot中Y轴正方向朝上，y0为物理底部，y0+letter_h为物理顶部
 
 % 边缘4个点(强制要求)
@@ -52,65 +52,61 @@ y_start = Yc - letter_h/2;   %此处 y_start 即为字母的"最底端"
 
 letter_targets = [];
 
-%% 字母 H
+%% 字母 L
 x0 = x_start;
 y0 = y_start;
-%左竖笔画：从底端 y0 向上延伸到 y0+letter_h
+%竖笔画：从底端 y0 向上延伸到 y0+letter_h
 pts_y = (y0:spacing:y0+letter_h)';
 letter_targets = [letter_targets; ones(size(pts_y))*x0, pts_y];
-%右竖笔画
-pts_y2 = (y0:spacing:y0+letter_h)';
-letter_targets = [letter_targets; ones(size(pts_y2))*(x0+letter_w), pts_y2];
-%中间横笔画：Y固定在中间 y0+letter_h/2，X从左到右
-pts_x3 = (x0:spacing:x0+letter_w)';
-letter_targets = [letter_targets; pts_x3, ones(size(pts_x3))*(y0+letter_h/2)];
+%横笔画(底部)：Y固定在底部 y0，X向右延伸
+pts_x2 = (x0:spacing:x0+letter_w)';
+letter_targets = [letter_targets; pts_x2, ones(size(pts_x2))*y0];
 
-%% 字母 Y
+%% 字母 W
 x0 = x_start + letter_w + gap;
 y0 = y_start;
-n_pts = round(letter_h/spacing/2);
-%左上斜笔：从左上(x0, y0+letter_h)到中间交汇点(x0+letter_w/2, y0+letter_h/2)
+seg_w = letter_w/4;
+n_pts = round(letter_h/spacing);
+%第一笔：从左上(y0+H)落至左下(y0)
 for k = 0:n_pts
     t = k/n_pts;
-    px = x0 + t*(letter_w/2);
-    py = y0 + letter_h - t*(letter_h/2);
-    letter_targets = [letter_targets; px, py];
+    letter_targets = [letter_targets; x0 + t*seg_w, y0 + letter_h - t*letter_h];
 end
-%右上斜笔：从右上(x0+letter_w, y0+letter_h)到中间交汇点(x0+letter_w/2, y0+letter_h/2)
+%第二笔：从左下(y0)升至中峰(y0+H)
 for k = 0:n_pts
     t = k/n_pts;
-    px = x0 + letter_w - t*(letter_w/2);
-    py = y0 + letter_h - t*(letter_h/2);
-    letter_targets = [letter_targets; px, py];
+    letter_targets = [letter_targets; x0 + seg_w + t*seg_w, y0 + t*letter_h];
 end
-%下半竖笔：从中间交汇点(x0+letter_w/2, y0+letter_h/2)向下到(x0+letter_w/2, y0)
-pts_y4 = (y0:spacing:y0+letter_h/2)';
-letter_targets = [letter_targets; ones(size(pts_y4))*(x0+letter_w/2), pts_y4];
+%第三笔：从中峰(y0+H)落至右下(y0)
+for k = 0:n_pts
+    t = k/n_pts;
+    letter_targets = [letter_targets; x0 + 2*seg_w + t*seg_w, y0 + letter_h - t*letter_h];
+end
+%第四笔：从右下(y0)升至右上(y0+H)
+for k = 0:n_pts
+    t = k/n_pts;
+    letter_targets = [letter_targets; x0 + 3*seg_w + t*seg_w, y0 + t*letter_h];
+end
 
-%% 字母 S (左右镜像)
+%% 字母 B
 x0 = x_start + 2*(letter_w + gap);
 y0 = y_start;
-%S由三条横线和两段圆弧组成
-%底部横线(右侧延伸)
-pts_x_bot = (x0+letter_w*0.2:spacing:x0+letter_w)';
-letter_targets = [letter_targets; pts_x_bot, ones(size(pts_x_bot))*y0];
-%中部横线
-pts_x_mid = (x0+letter_w*0.2:spacing:x0+letter_w*0.8)';
-letter_targets = [letter_targets; pts_x_mid, ones(size(pts_x_mid))*(y0+letter_h/2)];
-%顶部横线(左侧延伸)
-pts_x_top = (x0:spacing:x0+letter_w*0.8)';
-letter_targets = [letter_targets; pts_x_top, ones(size(pts_x_top))*(y0+letter_h)];
-%下半圆弧(右侧凸出，连接底部和中部)
-r_arc_s = letter_h/4;
-x_center_bot = x0 + letter_w*0.8;
-y_center_bot = y0 + letter_h/4;
-theta_s = linspace(-pi/2, pi/2, round(pi*r_arc_s/spacing))';
-letter_targets = [letter_targets; x_center_bot + r_arc_s*cos(theta_s), y_center_bot + r_arc_s*sin(theta_s)];
-%上半圆弧(左侧凸出，连接中部和顶部)
-x_center_top = x0 + letter_w*0.2;
-y_center_top = y0 + 3*letter_h/4;
-theta_s2 = linspace(pi/2, 3*pi/2, round(pi*r_arc_s/spacing))';
-letter_targets = [letter_targets; x_center_top + r_arc_s*cos(theta_s2), y_center_top + r_arc_s*sin(theta_s2)];
+%竖笔画 (左侧)
+pts_y = (y0:spacing:y0+letter_h)';
+letter_targets = [letter_targets; ones(size(pts_y))*x0, pts_y];
+%三条横线
+pts_x3 = (x0:spacing:x0+letter_w*0.7)';
+letter_targets = [letter_targets; pts_x3, ones(size(pts_x3))*y0];               % 底部横线
+letter_targets = [letter_targets; pts_x3, ones(size(pts_x3))*(y0+letter_h/2)];  % 中部横线
+letter_targets = [letter_targets; pts_x3, ones(size(pts_x3))*(y0+letter_h)];    % 顶部横线
+%两个半圆弧
+r_arc = letter_h/4;
+x_center = x0 + letter_w*0.7;
+theta_arc = linspace(-pi/2, pi/2, round(pi*r_arc/spacing))';
+%下半圆弧
+letter_targets = [letter_targets; x_center + r_arc*cos(theta_arc), y0 + r_arc + r_arc*sin(theta_arc)];
+%上半圆弧
+letter_targets = [letter_targets; x_center + r_arc*cos(theta_arc), y0 + 3*r_arc + r_arc*sin(theta_arc)];
 
 %% 合并所有目标
 target = [edge_targets; letter_targets];
@@ -124,7 +120,7 @@ hold on;
 plot(edge_targets(:,1), edge_targets(:,2), 'r.', 'MarkerSize', 8);
 xlabel('距离向 X /m');
 ylabel('方位向 Y /m');
-title('点目标初始分布(字母HYS + 边缘点)');
+title('点目标初始分布(字母LWB + 边缘点)');
 axis equal;
 grid on;
 
