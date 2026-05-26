@@ -26,25 +26,103 @@ Ta = Ls/Vr;                 %目标照射时间
 im = sqrt(-1);              %虚数单位
 
 %% 场景设置
-Xc = sqrt(R_etac^2 - H^2); %场景中心地距坐标
-Yc = 0;
-Xo = 300;                   %距离向半幅宽(地距)
-Yo = 300;                   %方位向半幅宽
+Xc = sqrt(R_etac^2 - H^2); %场景中心地距坐标(距离向)
+Yc = 0;                     %场景中心方位向坐标
+Xo = 500;                   %距离向半幅宽500，总宽1000m(横轴)
+Yo = 250;                   %方位向半幅宽250，总宽500m(纵轴)
 
 %% 点目标生成 - 字母LWB + 边缘点
+%%注意：plot中Y轴正方向朝上，y0为物理底部，y0+letter_h为物理顶部
+
 % 边缘4个点(强制要求)
 edge_targets = [Xc-Xo, Yc-Yo;
                 Xc-Xo, Yc+Yo;
                 Xc+Xo, Yc-Yo;
                 Xc+Xo, Yc+Yo];
 
-% 字母点目标生成函数
-letter_targets = generate_letter_targets(Xc, Yc, Xo, Yo);
+%% 字母点目标生成 (严格按照笛卡尔坐标系 Y向上为正)
+spacing = 2.0;      %相邻点间距2m
+letter_h = 280;     %字母高度(纵轴500m的约2/3)
+letter_w = 160;     %字母宽度
+gap = 50;           %字母间距
 
-% 合并所有目标
+total_w = 3*letter_w + 2*gap;
+x_start = Xc - total_w/2;    %距离向整体居中
+y_start = Yc - letter_h/2;   %此处 y_start 即为字母的"最底端"
+
+letter_targets = [];
+
+%% 字母 L
+x0 = x_start;
+y0 = y_start;
+%竖笔画：从底端 y0 向上延伸到 y0+letter_h
+pts_y = (y0:spacing:y0+letter_h)';
+letter_targets = [letter_targets; ones(size(pts_y))*x0, pts_y];
+%横笔画(底部)：Y固定在底部 y0，X向右延伸
+pts_x2 = (x0:spacing:x0+letter_w)';
+letter_targets = [letter_targets; pts_x2, ones(size(pts_x2))*y0];
+
+%% 字母 W
+x0 = x_start + letter_w + gap;
+y0 = y_start;
+seg_w = letter_w/4;
+n_pts = round(letter_h/spacing);
+%第一笔：从左上(y0+H)落至左下(y0)
+for k = 0:n_pts
+    t = k/n_pts;
+    letter_targets = [letter_targets; x0 + t*seg_w, y0 + letter_h - t*letter_h];
+end
+%第二笔：从左下(y0)升至中峰(y0+H)
+for k = 0:n_pts
+    t = k/n_pts;
+    letter_targets = [letter_targets; x0 + seg_w + t*seg_w, y0 + t*letter_h];
+end
+%第三笔：从中峰(y0+H)落至右下(y0)
+for k = 0:n_pts
+    t = k/n_pts;
+    letter_targets = [letter_targets; x0 + 2*seg_w + t*seg_w, y0 + letter_h - t*letter_h];
+end
+%第四笔：从右下(y0)升至右上(y0+H)
+for k = 0:n_pts
+    t = k/n_pts;
+    letter_targets = [letter_targets; x0 + 3*seg_w + t*seg_w, y0 + t*letter_h];
+end
+
+%% 字母 B
+x0 = x_start + 2*(letter_w + gap);
+y0 = y_start;
+%竖笔画 (左侧)
+pts_y = (y0:spacing:y0+letter_h)';
+letter_targets = [letter_targets; ones(size(pts_y))*x0, pts_y];
+%三条横线
+pts_x3 = (x0:spacing:x0+letter_w*0.7)';
+letter_targets = [letter_targets; pts_x3, ones(size(pts_x3))*y0];               % 底部横线
+letter_targets = [letter_targets; pts_x3, ones(size(pts_x3))*(y0+letter_h/2)];  % 中部横线
+letter_targets = [letter_targets; pts_x3, ones(size(pts_x3))*(y0+letter_h)];    % 顶部横线
+%两个半圆弧
+r_arc = letter_h/4;
+x_center = x0 + letter_w*0.7;
+theta_arc = linspace(-pi/2, pi/2, round(pi*r_arc/spacing))';
+%下半圆弧
+letter_targets = [letter_targets; x_center + r_arc*cos(theta_arc), y0 + r_arc + r_arc*sin(theta_arc)];
+%上半圆弧
+letter_targets = [letter_targets; x_center + r_arc*cos(theta_arc), y0 + 3*r_arc + r_arc*sin(theta_arc)];
+
+%% 合并所有目标
 target = [edge_targets; letter_targets];
 Ntarget = size(target, 1);
 fprintf('总点目标数: %d\n', Ntarget);
+
+%% 显示初始点目标分布
+figure;
+plot(target(:,1), target(:,2), 'r.', 'MarkerSize', 8);
+hold on;
+plot(edge_targets(:,1), edge_targets(:,2), 'r.', 'MarkerSize', 8);
+xlabel('距离向 X /m');
+ylabel('方位向 Y /m');
+title('点目标初始分布(字母LWB + 边缘点)');
+axis equal;
+grid on;
 
 %% 观测几何计算
 Rmin = sqrt(H^2 + (Xc-Xo)^2);   %最近斜距
@@ -171,115 +249,14 @@ colormap('jet');
 figure;
 img_dB = 20*log10(abs(signal_processed)/max(abs(signal_processed(:)))+eps);
 imagesc(r_axis, y, img_dB);
-xlabel('距离向/m');
-ylabel('方位向/m');
+axis xy;    % 将Y轴反转回来，保证图像显示符合真实空间几何关系
+xlabel('距离向 /m');
+ylabel('方位向 /m');
 title('RD成像结果(dB)');
 caxis([-40 0]);
+
+% 不限制显示范围，自动适应数据
 colorbar;
 colormap('jet');
 
 fprintf('成像完成！\n');
-
-%% ========== 字母点目标坐标生成函数 ==========
-function targets = generate_letter_targets(Xc, Yc, Xo, Yo)
-% 生成字母 L W B 的点目标坐标
-% 字母排布在场景中心区域，间距2m防止主瓣重叠
-    
-    spacing = 2.0;      %相邻点间距2m
-    letter_h = 80;      %字母高度
-    letter_w = 50;      %字母宽度
-    gap = 40;           %字母间距
-    
-    %三个字母总宽度
-    total_w = 3*letter_w + 2*gap;
-    
-    %字母起始位置(方位向居中)
-    y_start = Yc - total_w/2;
-    x_start = Xc - letter_h/2;   %距离向居中
-    
-    targets = [];
-    
-    %% 字母 L
-    x0 = x_start;
-    y0 = y_start;
-    %竖笔画
-    pts_x = (x0:spacing:x0+letter_h)';
-    pts_y = ones(size(pts_x))*y0;
-    targets = [targets; pts_x, pts_y];
-    %横笔画(底部)
-    pts_y2 = (y0:spacing:y0+letter_w)';
-    pts_x2 = ones(size(pts_y2))*(x0+letter_h);
-    targets = [targets; pts_x2, pts_y2];
-    
-    %% 字母 W
-    y0 = y_start + letter_w + gap;
-    x0 = x_start;
-    seg_w = letter_w/4;  %W分4段
-    %第一笔(左竖斜)
-    n_pts = round(letter_h/spacing);
-    for k = 0:n_pts
-        t_ratio = k/n_pts;
-        px = x0 + t_ratio*letter_h;
-        py = y0 + t_ratio*seg_w;
-        targets = [targets; px, py];
-    end
-    %第二笔(左谷上升)
-    for k = 0:n_pts
-        t_ratio = k/n_pts;
-        px = x0 + letter_h - t_ratio*(letter_h/2);
-        py = y0 + seg_w + t_ratio*seg_w;
-        targets = [targets; px, py];
-    end
-    %第三笔(右谷下降)
-    for k = 0:n_pts
-        t_ratio = k/n_pts;
-        px = x0 + letter_h/2 + t_ratio*(letter_h/2);
-        py = y0 + 2*seg_w + t_ratio*seg_w;
-        targets = [targets; px, py];
-    end
-    %第四笔(右竖斜上升)
-    for k = 0:n_pts
-        t_ratio = k/n_pts;
-        px = x0 + letter_h - t_ratio*letter_h;
-        py = y0 + 3*seg_w + t_ratio*seg_w;
-        targets = [targets; px, py];
-    end
-    
-    %% 字母 B
-    y0 = y_start + 2*(letter_w + gap);
-    x0 = x_start;
-    %竖笔画
-    pts_x = (x0:spacing:x0+letter_h)';
-    pts_y = ones(size(pts_x))*y0;
-    targets = [targets; pts_x, pts_y];
-    %上横
-    pts_y2 = (y0:spacing:y0+letter_w*0.7)';
-    pts_x2 = ones(size(pts_y2))*x0;
-    targets = [targets; pts_x2, pts_y2];
-    %中横
-    pts_y3 = (y0:spacing:y0+letter_w*0.7)';
-    pts_x3 = ones(size(pts_y3))*(x0+letter_h/2);
-    targets = [targets; pts_x3, pts_y3];
-    %下横
-    pts_y4 = (y0:spacing:y0+letter_w*0.7)';
-    pts_x4 = ones(size(pts_y4))*(x0+letter_h);
-    targets = [targets; pts_x4, pts_y4];
-    %上半圆弧
-    r_arc = letter_h/4;
-    y_center_up = y0 + letter_w*0.7;
-    x_center_up = x0 + letter_h/4;
-    theta_arc = linspace(-pi/2, pi/2, round(pi*r_arc/spacing));
-    for k = 1:length(theta_arc)
-        px = x_center_up + r_arc*sin(theta_arc(k));
-        py = y_center_up + r_arc*cos(theta_arc(k));
-        targets = [targets; px, py];
-    end
-    %下半圆弧
-    x_center_dn = x0 + 3*letter_h/4;
-    y_center_dn = y0 + letter_w*0.7;
-    for k = 1:length(theta_arc)
-        px = x_center_dn + r_arc*sin(theta_arc(k));
-        py = y_center_dn + r_arc*cos(theta_arc(k));
-        targets = [targets; px, py];
-    end
-end
